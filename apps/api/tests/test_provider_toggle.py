@@ -24,7 +24,12 @@ def test_ollama_unreachable_raises_structured_error_not_crash():
     with pytest.raises(LLMProviderError) as exc_info:
         complete("system prompt", [{"role": "user", "content": "hi"}], settings)
     assert exc_info.value.provider == "ollama"
-    assert "not reachable" in exc_info.value.detail.lower()
+    # Depending on the OS/network stack, connecting to an unassigned port either
+    # refuses immediately (ConnectError -> "not reachable") or hangs until our
+    # timeout fires (TimeoutException -> "timed out") -- both are the graceful,
+    # non-crashing structured failure this test cares about.
+    detail = exc_info.value.detail.lower()
+    assert "not reachable" in detail or "timed out" in detail
 
 
 def test_unknown_provider_raises_structured_error():

@@ -1,4 +1,5 @@
 import time
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,7 +13,14 @@ configure_logging()
 logger = get_logger(__name__)
 settings = get_settings()
 
-app = FastAPI(title="Lenny Growth Assistant API", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("app_startup", model_provider=settings.model_provider, environment=settings.environment)
+    yield
+
+
+app = FastAPI(title="Lenny Growth Assistant API", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -42,8 +50,3 @@ async def log_requests(request: Request, call_next):
 
 app.include_router(system.router)
 app.include_router(sessions.router)
-
-
-@app.on_event("startup")
-async def on_startup():
-    logger.info("app_startup", model_provider=settings.model_provider, environment=settings.environment)

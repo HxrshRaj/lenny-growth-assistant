@@ -4,7 +4,10 @@ Parses one `episodes/{slug}/transcript.md` file into (frontmatter, turns).
 Format confirmed by inspecting the real repo (docs/architecture.md sec 1):
 YAML frontmatter, then a body where every speaker turn starts with a line that is
 *exactly* `Speaker Name (HH:MM:SS):` or, for a continuation of the same speaker,
-just `(HH:MM:SS):` with no name.
+just `(HH:MM:SS):` with no name. Timestamps are NOT consistently HH:MM:SS --
+episodes under an hour often use MM:SS instead (discovered only after a first full
+ingestion run skipped 29 episodes as "no turns parsed"; see
+agent-transcripts/phase-2-ingestion-retrieval.md). Both formats are accepted.
 """
 import re
 from dataclasses import dataclass
@@ -12,7 +15,8 @@ from dataclasses import dataclass
 import yaml
 
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n(.*)$", re.DOTALL)
-TURN_MARKER_RE = re.compile(r"^(?P<name>.*?)\((?P<ts>\d{1,2}:\d{2}:\d{2})\):\s*$", re.MULTILINE)
+# Accepts both MM:SS and H(H):MM:SS.
+TURN_MARKER_RE = re.compile(r"^(?P<name>.*?)\((?P<ts>\d{1,2}(?::\d{2}){1,2})\):\s*$", re.MULTILINE)
 # Fallback for the ~10% of episodes (measured: 30/303) that have no timestamps at
 # all -- just "Speaker Name:" on its own line. Restricted to short, capitalized,
 # punctuation-free lines so it doesn't false-positive on a sentence that happens to
