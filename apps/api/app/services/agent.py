@@ -4,6 +4,7 @@ single place that ties Phase 2 (retrieval) and Phase 3 (provider abstraction +
 skills) together. See docs/architecture.md "agent routing" for the design
 rationale (deterministic router, why no LLM-driven tool-calling).
 """
+import re
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -21,6 +22,23 @@ from app.services.skills import artifact, qa, ship30
 logger = get_logger(__name__)
 
 HISTORY_TURNS_FOR_QA = 6  # last N messages included as conversation context for follow-ups
+
+_ANY_FENCE_RE = re.compile(r"```([a-zA-Z]*)\n?([\s\S]*?)\n?```")
+
+
+def _normalize_artifact_fence(text: str, fence_lang: str) -> str:
+    """The artifact skills instruct the model to wrap its output in ```html or
+    ```markdown, but smaller/local models don't reliably comply -- observed live:
+    a real response used a bare ``` fence with no language tag, which the
+    frontend's fence-detection regex would silently miss entirely (the artifact
+    would just never open). Fixed at the source rather than only loosening the
+    frontend regex: if the model produced *some* fenced block, force its tag to
+    the correct type; if it produced no fence at all, wrap the whole reply."""
+    match = _ANY_FENCE_RE.search(text)
+    if match:
+        body = match.group(2)
+        return text[: match.start()] + f"```{fence_lang}\n{body}\n```" + text[match.end() :]
+    return f"Here's the generated artifact:\n\n```{fence_lang}\n{text.strip()}\n```"
 
 
 @dataclass
@@ -79,6 +97,15 @@ def run_turn(db: DBSession, user_message: str, history: list[dict]) -> AgentTurn
             max_tokens = 600
 
         result = complete(system, messages, settings, max_tokens=max_tokens)
+
+        # Guarantee the fence tag the frontend depends on -- don't just trust the
+        # model followed the "```html"/"```markdown" instruction (see
+        # agent-transcripts/phase-5-frontend.md for the real case this caught).
+        if intent == intent_router.Intent.ARTIFACT_HTML:
+            result.text = _normalize_artifact_fence(result.text, "html")
+        elif intent == intent_router.Intent.ARTIFACT_MARKDOWN:
+            result.text = _normalize_artifact_fence(result.text, "markdown")
+
         latency_ms = int((time.monotonic() - start) * 1000)
 
         logger.info(
