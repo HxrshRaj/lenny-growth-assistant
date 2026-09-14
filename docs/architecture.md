@@ -155,7 +155,7 @@ SQLAlchemy models in `apps/api/app/models.py`.
 | model_provider | varchar(20), nullable | `"anthropic" \| "ollama"`, set on assistant turns once Phase 3 lands |
 | model_name | varchar(100), nullable | the actual model string used, for audit |
 | retrieval_hit_count | int, nullable | how many chunks were retrieved for this turn (Phase 2/3) |
-| citations | jsonb, nullable | list of `{episode_slug, guest, title, source_url, start_timestamp, text_preview}` |
+| citations | jsonb, nullable | list of `{episode_slug, guest, title, source_url, start_timestamp, score, text_preview}` |
 | latency_ms | int, nullable | wall-clock time to produce the assistant turn |
 | error | text, nullable | set instead of failing the request when a turn partially fails (e.g. LLM call errored after retrieval succeeded) |
 | created_at | timestamp, server default `now()` | |
