@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     anthropic_model: str = "claude-sonnet-5"
 
     ollama_base_url: str = "http://localhost:11434"
-    ollama_model: str = "mymodel"
+    ollama_model: str = "llama3.2:3b"
     ollama_timeout_seconds: float = 240.0
     # Ollama silently defaults num_ctx to 2048 even when the underlying model
     # supports more -- see llm.py::_complete_ollama for the real failure this
