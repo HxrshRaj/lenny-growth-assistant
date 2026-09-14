@@ -30,7 +30,9 @@ and returned. Full detail: [docs/architecture.md](docs/architecture.md).
   developed and verified against** and is recommended; other small models may
   work but were not tested (see "Troubleshooting" for a real issue found with
   an arbitrary local model)
-- For cloud provider: an Anthropic API key ([console.anthropic.com](https://console.anthropic.com/))
+- For cloud provider: either an Anthropic API key ([console.anthropic.com](https://console.anthropic.com/))
+  or a Gemini API key ([aistudio.google.com/apikey](https://aistudio.google.com/apikey)) -- pick whichever
+  you have; both are wired up identically via `MODEL_PROVIDER`
 - Node.js 20+ and Python 3.11+ only if you want to run components outside Docker
 
 ## Install & run (one command)
@@ -40,12 +42,14 @@ cp .env.example .env
 ```
 
 Edit `.env`:
-- Set `MODEL_PROVIDER=ollama` (default, required for the mandatory local demo) or
-  `anthropic`.
+- Set `MODEL_PROVIDER=ollama` (default, required for the mandatory local demo),
+  `anthropic`, or `gemini`.
 - If `ollama`: set `OLLAMA_MODEL` to a model you've actually pulled (`ollama list`
   to check). `OLLAMA_BASE_URL` defaults to `http://host.docker.internal:11434` so
   the containerized API can reach Ollama running on your host machine.
 - If `anthropic`: set `ANTHROPIC_API_KEY`.
+- If `gemini`: set `GEMINI_API_KEY` (get one free at
+  [aistudio.google.com/apikey](https://aistudio.google.com/apikey)).
 
 ```bash
 docker compose up
@@ -79,9 +83,11 @@ See [.env.example](.env.example) for the full list with inline comments. Summary
 |---|---|---|
 | `POSTGRES_USER`/`PASSWORD`/`DB`/`PORT` | no (safe defaults) | Postgres container config |
 | `DATABASE_URL` | yes | SQLAlchemy connection string used by the API + Alembic |
-| `MODEL_PROVIDER` | yes | `anthropic` or `ollama` — the ONLY switch needed to change providers |
+| `MODEL_PROVIDER` | yes | `anthropic`, `gemini`, or `ollama` — the ONLY switch needed to change providers |
 | `ANTHROPIC_API_KEY` | only if provider=anthropic | never commit a real value |
 | `ANTHROPIC_MODEL` | no | defaults to `claude-sonnet-5` |
+| `GEMINI_API_KEY` | only if provider=gemini | never commit a real value |
+| `GEMINI_MODEL` | no | defaults to `gemini-2.0-flash` |
 | `OLLAMA_BASE_URL` | only if provider=ollama | where `ollama serve` is reachable from the API container |
 | `OLLAMA_MODEL` | only if provider=ollama | must match a model you've pulled |
 | `EMBEDDING_MODEL` | no | defaults to `all-MiniLM-L6-v2`; change here AND re-run ingestion if you ever swap it |

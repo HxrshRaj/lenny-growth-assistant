@@ -18,11 +18,15 @@ class Settings(BaseSettings):
 
     # --- Model provider toggle (the whole point of Phase 3) ---
     # "anthropic" -> cloud Claude via Anthropic API
+    # "gemini"    -> cloud Gemini via Google's Generative Language API
     # "ollama"    -> local Ollama server
-    model_provider: Literal["anthropic", "ollama"] = "ollama"
+    model_provider: Literal["anthropic", "gemini", "ollama"] = "ollama"
 
     anthropic_api_key: str | None = None
     anthropic_model: str = "claude-sonnet-5"
+
+    gemini_api_key: str | None = None
+    gemini_model: str = "gemini-2.0-flash"
 
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2:3b"

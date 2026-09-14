@@ -19,6 +19,14 @@ def test_anthropic_without_api_key_raises_structured_error():
     assert "ANTHROPIC_API_KEY" in exc_info.value.detail
 
 
+def test_gemini_without_api_key_raises_structured_error():
+    settings = Settings(model_provider="gemini", gemini_api_key=None)
+    with pytest.raises(LLMProviderError) as exc_info:
+        complete("system prompt", [{"role": "user", "content": "hi"}], settings)
+    assert exc_info.value.provider == "gemini"
+    assert "GEMINI_API_KEY" in exc_info.value.detail
+
+
 def test_ollama_unreachable_raises_structured_error_not_crash():
     settings = Settings(model_provider="ollama", ollama_base_url="http://localhost:1", ollama_timeout_seconds=2)
     with pytest.raises(LLMProviderError) as exc_info:

@@ -64,7 +64,9 @@ def get_config(settings: Settings = Depends(get_settings)) -> ConfigOut:
     return ConfigOut(
         model_provider=settings.model_provider,
         anthropic_model=settings.anthropic_model,
+        gemini_model=settings.gemini_model,
         ollama_model=settings.ollama_model,
         anthropic_configured=bool(settings.anthropic_api_key),
+        gemini_configured=bool(settings.gemini_api_key),
         ollama_reachable=ollama_reachable,
     )

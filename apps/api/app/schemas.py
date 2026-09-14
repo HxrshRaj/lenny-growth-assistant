@@ -74,6 +74,8 @@ class HealthOut(BaseModel):
 class ConfigOut(BaseModel):
     model_provider: str
     anthropic_model: str
+    gemini_model: str
     ollama_model: str
     anthropic_configured: bool
+    gemini_configured: bool
     ollama_reachable: bool

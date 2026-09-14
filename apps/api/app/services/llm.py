@@ -1,6 +1,6 @@
 """
 Model-provider abstraction. This is the ONLY module that knows how to actually talk
-to Anthropic or Ollama -- everything upstream (agent.py, skills) calls
+to Anthropic, Gemini, or Ollama -- everything upstream (agent.py, skills) calls
 `complete(system, messages)` and gets back a provider-agnostic `LLMResult`.
 Switching MODEL_PROVIDER in .env changes which branch runs; no other code changes.
 """
@@ -45,6 +45,8 @@ def complete(
 
     if settings.model_provider == "anthropic":
         return _complete_anthropic(system, messages, settings, max_tokens)
+    elif settings.model_provider == "gemini":
+        return _complete_gemini(system, messages, settings, max_tokens)
     elif settings.model_provider == "ollama":
         return _complete_ollama(system, messages, settings, max_tokens)
     else:
@@ -74,6 +76,61 @@ def _complete_anthropic(system: str, messages: list[dict], settings: Settings, m
     except Exception as e:  # noqa: BLE001 -- any SDK/network error becomes a structured provider error
         logger.error("anthropic_call_failed", error=str(e))
         raise LLMProviderError("anthropic", f"Anthropic API call failed: {e}") from e
+
+
+GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta"
+
+
+def _complete_gemini(system: str, messages: list[dict], settings: Settings, max_tokens: int) -> LLMResult:
+    if not settings.gemini_api_key:
+        raise LLMProviderError(
+            "gemini",
+            "GEMINI_API_KEY is not set. Add it to .env, or switch MODEL_PROVIDER to 'ollama'.",
+        )
+    # Gemini uses "user"/"model" roles (not "user"/"assistant") and a separate
+    # top-level systemInstruction field rather than a system-role message.
+    contents = [
+        {"role": "model" if m["role"] == "assistant" else "user", "parts": [{"text": m["content"]}]}
+        for m in messages
+    ]
+    payload = {
+        "system_instruction": {"parts": [{"text": system}]},
+        "contents": contents,
+        "generationConfig": {"maxOutputTokens": max_tokens},
+    }
+    url = f"{GEMINI_API_BASE}/models/{settings.gemini_model}:generateContent"
+    try:
+        resp = httpx.post(
+            url,
+            params={"key": settings.gemini_api_key},
+            json=payload,
+            timeout=60.0,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        candidates = data.get("candidates") or []
+        if not candidates:
+            # Gemini returns 200 with no candidates when it blocks a response on
+            # safety grounds -- surface that distinctly rather than as empty text.
+            reason = data.get("promptFeedback", {}).get("blockReason", "unknown")
+            raise LLMProviderError("gemini", f"Gemini returned no candidates (blockReason: {reason}).")
+        parts = candidates[0].get("content", {}).get("parts", [])
+        text = "".join(p.get("text", "") for p in parts)
+        return LLMResult(text=text, provider="gemini", model_name=settings.gemini_model)
+    except LLMProviderError:
+        raise
+    except httpx.ConnectError as e:
+        logger.error("gemini_unreachable")
+        raise LLMProviderError("gemini", "Could not reach the Gemini API (network/DNS issue).") from e
+    except httpx.TimeoutException as e:
+        logger.error("gemini_timeout")
+        raise LLMProviderError("gemini", "Gemini API call timed out after 60s.") from e
+    except httpx.HTTPStatusError as e:
+        logger.error("gemini_http_error", status=e.response.status_code, body=e.response.text[:500])
+        detail = e.response.text[:300]
+        if e.response.status_code in (401, 403):
+            detail = "Invalid or unauthorized GEMINI_API_KEY."
+        raise LLMProviderError("gemini", f"Gemini API returned HTTP {e.response.status_code}: {detail}") from e
 
 
 def _complete_ollama(system: str, messages: list[dict], settings: Settings, max_tokens: int) -> LLMResult:

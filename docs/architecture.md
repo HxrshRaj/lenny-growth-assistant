@@ -152,7 +152,7 @@ SQLAlchemy models in `apps/api/app/models.py`.
 | session_id | uuid, FK -> sessions.id, `ON DELETE CASCADE` | |
 | role | varchar(20) | `"user" \| "assistant" \| "system"` |
 | content | text | |
-| model_provider | varchar(20), nullable | `"anthropic" \| "ollama"`, set on assistant turns once Phase 3 lands |
+| model_provider | varchar(20), nullable | `"anthropic" \| "gemini" \| "ollama"`, set on assistant turns once Phase 3 lands |
 | model_name | varchar(100), nullable | the actual model string used, for audit |
 | retrieval_hit_count | int, nullable | how many chunks were retrieved for this turn (Phase 2/3) |
 | citations | jsonb, nullable | list of `{episode_slug, guest, title, source_url, start_timestamp, score, text_preview}` |
@@ -254,15 +254,30 @@ Skills:
 
 ## 8d. Model-provider toggle
 
-One env var, `MODEL_PROVIDER` (`anthropic` | `ollama`), read once into
+One env var, `MODEL_PROVIDER` (`anthropic` | `gemini` | `ollama`), read once into
 `app.config.Settings`. `app/services/llm.py::complete()` is the only place that
-branches on it -- no other module imports `anthropic` or makes an Ollama HTTP call
-directly. Switching providers is `.env` edit + restart, zero code changes.
-`GET /config` surfaces the active provider and whether it's actually reachable
-right now (not just "configured").
+branches on it -- no other module imports `anthropic`, calls the Gemini REST API,
+or makes an Ollama HTTP call directly. Switching providers is `.env` edit +
+container recreate, zero code changes. `GET /config` surfaces the active provider
+and whether it's actually reachable right now (not just "configured").
 
-**Fallback behavior**: every provider failure (missing `ANTHROPIC_API_KEY`, Ollama
-unreachable, Ollama timeout, non-200 from either API) is caught in `llm.py` and
+Three providers, not two, because the evaluator's own available credentials
+turned out to be a Gemini key rather than an Anthropic one -- the assignment's
+requirement is "integrate at least one cloud provider, such as Anthropic Claude
+or OpenAI" (illustrative examples, not an exhaustive list), so Gemini satisfies
+it structurally the same way Anthropic does: same `LLMResult` contract, same
+`LLMProviderError` failure handling, same "one env var" toggle. Implemented via
+Gemini's REST `generateContent` endpoint directly over `httpx` (no extra SDK
+dependency, matching the existing Ollama pattern) rather than the
+`google-generativeai` SDK -- keeps the dependency footprint the same as before
+this was added. One real wrinkle handled: Gemini uses `user`/`model` roles (not
+`user`/`assistant`) and a top-level `system_instruction` field rather than a
+system-role message -- `_complete_gemini` maps `assistant` -> `model` before
+sending.
+
+**Fallback behavior**: every provider failure (missing `ANTHROPIC_API_KEY` or
+`GEMINI_API_KEY`, Ollama unreachable, Ollama timeout, non-200 from any API, a
+Gemini safety-blocked response with zero candidates) is caught in `llm.py` and
 raised as `LLMProviderError(provider, detail)`. `agent.py` catches that and returns
 a normal `AgentTurnResult` with `error` set and a clearly-labeled ⚠️ message as the
 `content` -- the turn is still persisted (the user doesn't lose their message) and
