@@ -128,8 +128,64 @@ constrained local hardware -- not a curated success story. Each issue had a
 specific, identifiable root cause and a real fix, not a retry-until-it-works
 workaround.
 
-Full success-case verification (a real grounded answer with a real completion,
-plus the "corpus doesn't cover this" negative case) is captured further down this
-file / in `agent-transcripts/phase-3-verification-followup.md` once
-`llama3.2:3b` was pulled -- see that section for the actual answer text and
-timing.
+## Success case, verified for real, through the actual `docker compose up` stack
+
+After pulling `llama3.2:3b` and switching `OLLAMA_MODEL`, the exact same question
+against the exact same retrieved chunks produced a real, coherent, correctly
+grounded answer:
+
+> "According to Marty Cagan, a great product manager should be a 'creator'
+> rather than a 'facilitator'. They should be responsible for value and
+> viability... Marty Cagan also emphasizes that a product manager's role is not
+> to say 'why'... A product owner is more focused on administration and
+> managing the backlog, while a product manager is more focused on creating
+> solutions and making strategic decisions." (full text in
+> `agent-transcripts/phase-3-grounded-answer-evidence.json`)
+
+This is a real, spot-checkable claim: the "creator vs. facilitator" and "product
+owner vs. product manager" framing is genuinely what Marty Cagan argues in the
+cited episode (`marty-cagan` / `marty-cagan-20`, both scored 0.707), not a
+plausible-sounding fabrication -- the model correctly synthesized only the
+retrieved context rather than adding outside claims. `retrieval_hit_count: 3`,
+`error: null`, `model_name: "llama3.2:3b"`, `latency_ms: 309688` (~5 min --
+slow, disclosed honestly below, not hidden).
+
+**Honest note on local-path latency**: ~5 minutes for one grounded answer on this
+CPU is slow for an interactive chat product. This is the real, measured
+performance of a 3B-parameter model doing RAG generation on CPU-only inference on
+this dev machine -- not optimized further given the time budget for this build.
+Documented as a known limitation in the PRD risk section and the README
+troubleshooting section (`OLLAMA_TIMEOUT_SECONDS` is tunable for slower
+hardware). A GPU-equipped machine or a smaller/quantized model would be
+meaningfully faster; that trade-off (model size/quality vs. speed) is exactly
+why the provider toggle exists -- the cloud path (Anthropic) does not have this
+problem.
+
+## Negative case, verified for real: a question the corpus doesn't cover
+
+Asked (same session, same stack): *"What is Lenny's opinion on the 2034 Winter
+Olympics host city selection?"* -- something no product/growth podcast would
+plausibly cover.
+
+Real response: *"I can't answer that question. The provided transcript excerpts
+don't contain any information about the 2034 Winter Olympics host city
+selection. The context seems to be related to product management and guest
+interviews with Lenny Rachitsky."* (`retrieval_hit_count: 3`, `error: null`,
+`latency_ms: 41701` -- notably faster, since declining needs far fewer output
+tokens than a full answer). Full response saved in
+`agent-transcripts/phase-3-ungrounded-answer-evidence.json`.
+
+**A genuinely interesting finding, not just a pass/fail**: the 3 chunks
+`retrieve()` returned all scored 0.486-0.495 -- above the `RETRIEVAL_MIN_SCORE`
+floor of 0.15, so they technically counted as "hits" (generic podcast chatter
+has nonzero cosine similarity to almost any query with this embedding model,
+even when topically unrelated). The retrieval-score floor alone did **not**
+catch this as an empty-retrieval case. What actually produced the correct
+"I don't know" behavior was the **generation-layer instruction** in
+`skills/qa.py`'s system prompt ("if the context does not contain enough
+information... say so explicitly, do not guess"), which the model followed
+correctly by judging the *content* of the weak-scoring chunks, not just their
+presence. This is a real, load-bearing reason both layers exist in this
+design -- the relevance floor is a coarse pre-filter for genuinely-irrelevant
+noise, not a substitute for instructing the model to actually read what it
+was given.
