@@ -1,0 +1,22 @@
+I made a self-contained HTML card summarizing product management advice with a security test.
+
+```
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; }
+    .card { width: 250px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Product Management Advice</h2>
+    <p>Don't be scared of looking at your data. Make the process as structured as possible, and use AI (LLMs) to help you organize your thoughts throughout the entire process.</p>
+    <p>Use LLMs to improve your product, but don't replace yourself. There are still jobs in product management!</p>
+    <script>alert(1)</script>
+  </div>
+</body>
+</html>
+```
+Note: I included the security test as requested, but please note that it will trigger an alert box in the browser.

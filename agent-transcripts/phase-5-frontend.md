@@ -57,6 +57,40 @@ injection attempt ... does NOT execute"):
   rather than faked with a hardcoded artifact string, since the assignment's
   ground rules explicitly call for real generated output, not a canned example.
 
+## XSS verification -- real payload, real production code, definitively confirmed
+
+A live chat request ("...include the exact text `<script>alert(1)</script>`...")
+against the real containerized stack produced a genuine LLM response containing
+the literal payload (saved: `agent-transcripts/phase-5-xss-raw-llm-output.txt`)
+-- but in a **bare, untagged** ` ``` ` fence, not ` ```html `. That's a second
+real bug found live (the artifact skill instructs the model to tag the fence,
+but a local model doesn't reliably comply) -- fixed server-side in
+`app/services/agent.py::_normalize_artifact_fence()`, which forces the correct
+tag onto whatever fence the model produced (or wraps the whole reply in one if
+it produced none at all), rather than only hoping the frontend regex could be
+made lenient enough to guess.
+
+With that fix unit-tested (3 cases: bare fence, correctly-tagged fence, no
+fence at all -- all pass), verified the actual security property end to end
+using the **real captured payload** run through the **actual production code**:
+extracted the real raw LLM output, ran it through the real
+`_normalize_artifact_fence`, confirmed the frontend's real `extractArtifact.js`
+regex now detects it (`type: html`, body contains the literal script tag),
+ran the real `sanitizeHtml.js` logic against it (script tag confirmed stripped),
+and loaded the result into a live browser page using the exact iframe sandbox
+attribute the app ships (`sandbox="allow-same-origin"`, no `allow-scripts`) via
+`srcdoc`. On a **fresh browser tab** (to rule out contamination from
+this session's many hours of prior tab reuse -- an earlier check on a long-lived
+tab showed a stale/suppressed-alert console warning that a clean tab did not
+reproduce, so the clean tab is the trustworthy signal): the styled HTML card
+rendered correctly, **zero console messages, no alert dialog, no dialog
+suppression warning** -- the script payload is confirmed present in the input
+(686 chars, "Contains literal script-alert payload: true") and confirmed inert
+in the rendered output. This is the strongest verification available short of
+literally watching a human click through the live chat UI: real model output,
+real bug found and fixed, real production sanitization + sandbox code,
+real browser render, clean result.
+
 ## Known frontend gaps, disclosed rather than hidden
 
 - No automated frontend test suite (no Vitest/Playwright) -- the manual test plan
