@@ -8,6 +8,13 @@ pydantic-settings==2.7.1
 python-dotenv==1.0.1
 pgvector==0.3.6
 httpx==0.28.1
+
+# CPU-only torch wheel -- sentence-transformers pulls torch as a dependency, and
+# the default PyPI wheel drags in several GB of NVIDIA CUDA libraries (cudnn,
+# cublas, ...) that a CPU-only container never uses. The extra index below serves
+# a torch build with no CUDA deps at all -- much smaller/faster image build.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
 sentence-transformers==3.3.1
 anthropic==0.42.0
 tiktoken==0.8.0

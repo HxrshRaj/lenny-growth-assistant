@@ -1,6 +1,11 @@
 pyyaml==6.0.2
 psycopg[binary]==3.2.3
 pgvector==0.3.6
+
+# CPU-only torch wheel -- see apps/api/requirements.txt for why (avoids pulling
+# several GB of unused NVIDIA CUDA libraries into a CPU-only container).
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
 sentence-transformers==3.3.1
 tqdm==4.67.1
 python-dotenv==1.0.1
