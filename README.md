@@ -26,7 +26,10 @@ and returned. Full detail: [docs/architecture.md](docs/architecture.md).
 
 - Docker Desktop (with Docker Compose v2+)
 - For local-model demo: [Ollama](https://ollama.com) running (`ollama serve`) with
-  a model pulled (e.g. `ollama pull llama3.2` or any model that fits your machine)
+  a model pulled -- **`ollama pull llama3.2:3b` is what this build was actually
+  developed and verified against** and is recommended; other small models may
+  work but were not tested (see "Troubleshooting" for a real issue found with
+  an arbitrary local model)
 - For cloud provider: an Anthropic API key ([console.anthropic.com](https://console.anthropic.com/))
 - Node.js 20+ and Python 3.11+ only if you want to run components outside Docker
 
@@ -153,10 +156,35 @@ Manual UI test plan: [docs/manual-test-plan.md](docs/manual-test-plan.md).
 - **A chat turn returns an ⚠️ error bubble instead of an answer**: check the
   `error` field / API logs. Most common causes: `OLLAMA_MODEL` isn't pulled
   (`ollama pull <model>`), Ollama timed out (CPU inference of even a small model
-  can take 30-120s depending on hardware and what else is running —
-  `OLLAMA_TIMEOUT_SECONDS` is tunable), or `ANTHROPIC_API_KEY` is unset/invalid.
-  This is graceful failure by design (see architecture.md sec 8d), not a bug — the
-  turn is still saved so you don't lose your message.
+  can genuinely take several minutes for a RAG-sized prompt, depending on
+  hardware and what else is running — `OLLAMA_TIMEOUT_SECONDS` is tunable, this
+  build defaults to 240s), or `ANTHROPIC_API_KEY` is unset/invalid. This is
+  graceful failure by design (see architecture.md sec 8d), not a bug — the turn
+  is still saved so you don't lose your message.
+- **A chat turn returns HTTP 200 with completely empty content, no error**: this
+  bit us for real during development -- Ollama silently defaults `num_ctx` to
+  2048 regardless of what the model actually supports, so a longer RAG prompt
+  can consume the whole window and leave no room to generate. Already fixed in
+  this build (`OLLAMA_NUM_CTX` is always sent explicitly), but if you swap in a
+  model with a *smaller* context than 4096, lower `OLLAMA_NUM_CTX` to match it.
+- **Model choice matters more than you'd expect for RAG.** This build was
+  developed and tested against `llama3.2:3b` (`ollama pull llama3.2:3b`) after
+  discovering, live, that an arbitrary small fine-tuned model can return
+  well-formed HTTP responses containing *incoherent garbage text* despite
+  correct retrieval underneath it — no error, just a bad answer. If you swap in
+  a different local model and answers look wrong/garbled, suspect the model
+  before suspecting the retrieval or prompt code (check `retrieval_hit_count`
+  and `citations` on the response first — if those look right, the problem is
+  the model, not this codebase).
+- **A grounded answer is slow (multiple minutes) on the local provider.** This
+  is real, measured CPU-inference latency for a ~3B model doing RAG generation,
+  not a hang. `RETRIEVAL_TOP_K` defaults to 3 (not 5) specifically to keep this
+  tractable; lowering it further, or switching `MODEL_PROVIDER=anthropic`, are
+  the two levers if this matters for your use.
+- **`docker compose restart api` doesn't pick up a `.env` change.** `restart`
+  reuses the container's already-baked-in environment; use
+  `docker compose up -d --force-recreate api` (or `down` + `up`) to actually
+  re-read `.env`.
 - **Every answer says "the transcripts don't support this"**: ingestion probably
   hasn't been run yet (`SELECT count(*) FROM chunks;` in `psql` should be in the
   thousands after a full run). Run the ingestion profile (see above).
