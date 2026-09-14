@@ -55,21 +55,30 @@ def run_turn(db: DBSession, user_message: str, history: list[dict]) -> AgentTurn
         logger.info("retrieval_empty", query_preview=user_message[:120])
 
     try:
+        # Output budgets are skill-specific: a QA answer is a paragraph or two,
+        # while a Ship 30 essay needs room for ~1,250 words (~1,700 tokens) and an
+        # artifact needs room for a full document. On the local provider this also
+        # directly bounds how long CPU generation takes -- see
+        # docs/architecture.md sec 8c for the measured trade-off.
         if intent == intent_router.Intent.SHIP30_ESSAY:
             system = ship30.build_system_prompt()
             messages = ship30.build_messages(context_block, user_message)
+            max_tokens = 2200
         elif intent == intent_router.Intent.ARTIFACT_MARKDOWN:
             system = artifact.MARKDOWN_SYSTEM_PROMPT
             messages = artifact.build_messages(context_block, user_message)
+            max_tokens = 1500
         elif intent == intent_router.Intent.ARTIFACT_HTML:
             system = artifact.HTML_SYSTEM_PROMPT
             messages = artifact.build_messages(context_block, user_message)
+            max_tokens = 1500
         else:
             system = qa.SYSTEM_PROMPT
             recent_history = history[-HISTORY_TURNS_FOR_QA:]
             messages = qa.build_messages(context_block, recent_history, user_message)
+            max_tokens = 600
 
-        result = complete(system, messages, settings)
+        result = complete(system, messages, settings, max_tokens=max_tokens)
         latency_ms = int((time.monotonic() - start) * 1000)
 
         logger.info(

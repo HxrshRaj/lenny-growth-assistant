@@ -35,7 +35,13 @@ class Settings(BaseSettings):
 
     # --- Retrieval ---
     embedding_model: str = "all-MiniLM-L6-v2"
-    retrieval_top_k: int = 5
+    # 3, not 5: measured live on this build's local model (3.8B, CPU, 4096 ctx) --
+    # 5 chunks pushed prompt processing past even a 240s timeout. 3 chunks keeps
+    # answers grounded (still multiple independent sources) while actually being
+    # answerable in reasonable time on constrained local hardware. Cloud providers
+    # have no such constraint; this is a local-path-driven default, documented as
+    # a real, measured trade-off in docs/architecture.md, not an arbitrary guess.
+    retrieval_top_k: int = 3
     retrieval_min_score: float = 0.15  # cosine similarity floor; below this we treat as "no hit"
 
     # --- CORS ---

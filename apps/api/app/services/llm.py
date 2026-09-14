@@ -32,19 +32,26 @@ class LLMResult:
     model_name: str
 
 
-def complete(system: str, messages: list[dict], settings: Settings | None = None) -> LLMResult:
-    """messages: [{"role": "user"|"assistant", "content": str}, ...]"""
+def complete(
+    system: str, messages: list[dict], settings: Settings | None = None, max_tokens: int = 800
+) -> LLMResult:
+    """messages: [{"role": "user"|"assistant", "content": str}, ...]
+
+    max_tokens: output budget. Callers set this per-skill -- a QA answer needs far
+    fewer tokens than a ~1,250-word Ship 30 essay or a full HTML artifact, and on
+    the local provider a smaller budget also means less time spent generating on
+    constrained CPU hardware."""
     settings = settings or get_settings()
 
     if settings.model_provider == "anthropic":
-        return _complete_anthropic(system, messages, settings)
+        return _complete_anthropic(system, messages, settings, max_tokens)
     elif settings.model_provider == "ollama":
-        return _complete_ollama(system, messages, settings)
+        return _complete_ollama(system, messages, settings, max_tokens)
     else:
         raise LLMProviderError(settings.model_provider, f"Unknown model provider '{settings.model_provider}'")
 
 
-def _complete_anthropic(system: str, messages: list[dict], settings: Settings) -> LLMResult:
+def _complete_anthropic(system: str, messages: list[dict], settings: Settings, max_tokens: int) -> LLMResult:
     if not settings.anthropic_api_key:
         raise LLMProviderError(
             "anthropic",
@@ -56,7 +63,7 @@ def _complete_anthropic(system: str, messages: list[dict], settings: Settings) -
         client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
         resp = client.messages.create(
             model=settings.anthropic_model,
-            max_tokens=4096,
+            max_tokens=max_tokens,
             system=system,
             messages=messages,
         )
@@ -69,7 +76,7 @@ def _complete_anthropic(system: str, messages: list[dict], settings: Settings) -
         raise LLMProviderError("anthropic", f"Anthropic API call failed: {e}") from e
 
 
-def _complete_ollama(system: str, messages: list[dict], settings: Settings) -> LLMResult:
+def _complete_ollama(system: str, messages: list[dict], settings: Settings, max_tokens: int) -> LLMResult:
     payload = {
         "model": settings.ollama_model,
         "messages": [{"role": "system", "content": system}, *messages],
@@ -79,7 +86,7 @@ def _complete_ollama(system: str, messages: list[dict], settings: Settings) -> L
         # a 5-chunk RAG prompt returned HTTP 200 with an empty completion -- no
         # error, just nothing, because the truncated context left no room to
         # generate). Explicitly request the model's real context window instead.
-        "options": {"num_ctx": settings.ollama_num_ctx},
+        "options": {"num_ctx": settings.ollama_num_ctx, "num_predict": max_tokens},
     }
     try:
         resp = httpx.post(
