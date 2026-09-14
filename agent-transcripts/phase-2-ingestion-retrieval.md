@@ -69,6 +69,38 @@ architecture.md doc itself intentionally does NOT get quietly rewritten to prete
 the format was fully understood from Phase 0 -- this log is the honest record of
 when the fuller picture emerged.
 
+## Dead end #3: a third, rarer transcript format (1/303 episodes)
+
+After the MM:SS fix, a full re-ingestion run left exactly one episode
+(`ryan-hoover`) still skipped as "no turns parsed". Opened the raw file instead of
+assuming it was corrupt: it uses a **third** distinct layout --
+`[HH:MM:SS] Speaker: text` all on one line (bracketed timestamp *before* the name,
+text inline rather than on following lines) -- structurally incompatible with the
+block-based `TURN_MARKER_RE` (which expects the marker line to end at the colon,
+with the turn's text on subsequent lines).
+
+**Fix**: added `BRACKET_INLINE_RE` as a distinct parsing path in
+`ingestion/parser.py` -- when it matches more turns than the block-based marker
+regex, each regex match already *is* a complete turn (timestamp + speaker + text
+together), no separate "text between markers" step needed. Verified against
+`ryan-hoover` (170 turns parsed correctly) and re-verified the other two formats
+(`ada-chen-rekhi` HH:MM:SS block, `asha-sharma`/`adriel-frederick` MM:SS block and
+no-timestamp block) still parse identically -- no regression from adding the third
+branch.
+
+**Ingested efficiently, not wastefully**: re-running the full 303-episode
+`ingest.py` again just for one fixed episode would have cost another ~40 minutes
+of CPU-bound re-embedding for zero benefit (idempotent upsert would leave 302 of
+303 episodes' rows byte-identical). Instead wrote a short one-off script reusing
+`parser.py`/`chunker.py`/`ingest.py`'s own `UPSERT_SQL`/`_to_jsonb`/`to_psycopg_url`
+against just the `ryan-hoover` episode directory -- 32 chunks upserted in a few
+seconds. Confirmed real full coverage afterward with
+`SELECT count(DISTINCT episode_slug) FROM chunks` -> **303** (matching the actual
+episode-folder count from Phase 0, not the source repo's stale README count).
+
+**Final real numbers**: 303/303 episodes ingested, **17,079 chunks** total in the
+pgvector index.
+
 ## Verification: retrieval against real indexed data (required deliverable)
 
 Ran `ingestion/scripts/verify_retrieval.py` with 5 real questions against the full
