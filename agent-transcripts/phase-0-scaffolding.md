@@ -102,5 +102,5 @@ Critical facts from the source doc that change execution priorities:
 - Source doc confirms the task prompt's phase breakdown is a faithful expansion of
   the brief -- no material conflicts found. One nuance: the brief allows "Anthropic
   Claude Agent SDK **or** Pi Coding Agent" and "Anthropic Claude **or** OpenAI" for
-  the cloud provider -- already defaul931ing to Claude Agent SDK + Anthropic per the
+  the cloud provider -- already defaulting to Claude Agent SDK + Anthropic per the
   task prompt's stated preference.
