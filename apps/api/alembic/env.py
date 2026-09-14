@@ -10,11 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.config import get_settings  # noqa: E402
 from app.database import Base  # noqa: E402
 from app import models  # noqa: E402,F401  -- import so metadata is populated
-
-try:  # models_retrieval is added in Phase 2 (pgvector chunk store)
-    from app import models_retrieval  # noqa: E402,F401
-except ImportError:
-    pass
+from app import models_retrieval  # noqa: E402,F401  -- pgvector chunk store (Phase 2)
 
 config = context.config
 settings = get_settings()
