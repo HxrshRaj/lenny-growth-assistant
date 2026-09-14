@@ -308,6 +308,51 @@ Markdown artifacts render via `react-markdown` with the default (safe) config --
 raw HTML passthrough is never enabled, so a Markdown artifact can't smuggle in an
 HTML/script payload either.
 
+## 8f. Deployment topology
+
+```
+                        ┌────────────────────┐
+   host machine         │  Ollama (optional)  │  http://host.docker.internal:11434
+   (or evaluator's)     │  ollama serve        │  <- reached from inside the api
+                        └─────────▲───────────┘     container via host.docker.internal
+                                  │
+ docker compose network ─────────┼──────────────────────────────────────
+                                  │
+        ┌───────────┐    ┌───────┴──────┐     ┌──────────────┐
+        │  web       │───▶│  api          │───▶│  db           │
+        │ (Vite/React)│HTTP│ (FastAPI +    │ SQL│ (Postgres 16 │
+        │ :5173       │    │  Alembic)     │    │  + pgvector) │
+        └───────────┘    │  :8000        │    │  :5432 (container)│
+                          └───────▲──────┘    │  -> :5442 (host) │
+                                  │            └──────────────┘
+                          ┌───────┴──────┐
+                          │  ingestion    │  one-off job, profile-gated,
+                          │  (not a       │  not started by `docker compose up`
+                          │   server)     │  -> `--profile ingestion run --rm`
+                          └──────────────┘
+```
+
+Three independently-buildable Docker contexts (`apps/api`, `apps/web`,
+`ingestion`) plus the `pgvector/pgvector:pg16` base image for `db` -- no shared
+base image or shared build context between them (see sec 8a's "component
+boundary, intentional" note). `web` and `api` are long-running services;
+`ingestion` is a one-shot job gated behind the `ingestion` Compose profile so a
+plain `docker compose up` never re-runs a 15-20 minute ingestion job by accident.
+
+**Structured logging**: every service logs JSON lines (`structlog`, see
+`app/logging_config.py`) to stdout, which is what `docker compose logs` and any
+real log aggregator both expect. Log events emitted today: `request_handled`
+(every HTTP request, with status + duration), `retrieval_query` (hits/misses +
+top score), `retrieval_empty` (explicit event when a turn found nothing),
+`agent_turn_routed` / `agent_turn_completed` / `agent_turn_provider_error`
+(which intent, which provider, latency), `database_unavailable` /
+`db_operational_error`, `ollama_unreachable` / `ollama_timeout` /
+`ollama_http_error`, `anthropic_call_failed`, `health_check_db_down` /
+`health_check_ollama_unreachable`. This covers every failure surface the
+assignment calls out (model, retrieval, database, and -- via the frontend's own
+XSS test rather than a log line, since there's no server round-trip involved --
+artifact rendering).
+
 ## 9. Deployment note: Postgres port
 
 The default `docker-compose.yml`/`.env.example` publish Postgres on host port
