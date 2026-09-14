@@ -129,4 +129,68 @@ embeddings API.** Rationale:
 ## 5. Storage
 
 `pgvector` extension on the Postgres container (added in `docker-compose.yml`).
-Full schema documented in §"Database schema" below, added in Phase 1.
+
+## 6. Database schema (Phase 1)
+
+Two tables exist after Phase 1's migration (`apps/api/alembic/versions/e072768ca708_*`);
+a third (`chunks`) is added in Phase 2. All managed by Alembic, driven by the
+SQLAlchemy models in `apps/api/app/models.py`.
+
+**`sessions`**
+| column | type | notes |
+|---|---|---|
+| id | uuid, PK | |
+| user_id | varchar(255) | placeholder -- no auth system in this build; defaults to `"anonymous"` |
+| title | varchar(500), nullable | not auto-generated yet (candidate future feature) |
+| created_at | timestamp, server default `now()` | |
+| updated_at | timestamp, server default + `onupdate` `now()` | |
+
+**`messages`**
+| column | type | notes |
+|---|---|---|
+| id | uuid, PK | |
+| session_id | uuid, FK -> sessions.id, `ON DELETE CASCADE` | |
+| role | varchar(20) | `"user" \| "assistant" \| "system"` |
+| content | text | |
+| model_provider | varchar(20), nullable | `"anthropic" \| "ollama"`, set on assistant turns once Phase 3 lands |
+| model_name | varchar(100), nullable | the actual model string used, for audit |
+| retrieval_hit_count | int, nullable | how many chunks were retrieved for this turn (Phase 2/3) |
+| citations | jsonb, nullable | list of `{episode_slug, guest, title, source_url, start_timestamp, text_preview}` |
+| latency_ms | int, nullable | wall-clock time to produce the assistant turn |
+| error | text, nullable | set instead of failing the request when a turn partially fails (e.g. LLM call errored after retrieval succeeded) |
+| created_at | timestamp, server default `now()` | |
+
+Index: `ix_messages_session_id_created_at` on `(session_id, created_at)` -- the only
+query pattern the app actually runs against this table (list a session's messages
+in order).
+
+Why these audit columns exist on `messages` and not a separate `audit_log` table:
+every assistant turn already *is* one row per model call, so attaching
+provider/latency/citations/error directly to it gives a complete per-response audit
+trail with zero joins -- exactly what "observability" in Phase 6 needs to query.
+
+## 7. API endpoints (Phase 1)
+
+| Method | Path | Purpose | Key errors |
+|---|---|---|---|
+| GET | `/health` | Live DB + (if provider=ollama) Ollama reachability check | never errors; reports `"degraded"` in the body |
+| GET | `/config` | Active model provider + whether each provider is actually usable right now | |
+| POST | `/sessions` | Create a session | 422 on bad body |
+| GET | `/sessions/{id}` | Fetch one session | 404 |
+| POST | `/sessions/{id}/messages` | Send a message, get the assistant's persisted reply | 404 (bad session), 422 (empty/too-long content), 503 (DB down) |
+| GET | `/sessions/{id}/messages` | Full message history, chronological | 404 |
+
+Every error response has the shape `{"error": str, "detail": str, "code": str}` --
+see `apps/api/app/errors.py`. No endpoint ever returns a raw stack trace; unexpected
+exceptions are logged server-side (structured JSON via structlog) and returned to
+the client as a generic 500 with `code: "INTERNAL_ERROR"`.
+
+## 8. Deployment note: Postgres port
+
+The default `docker-compose.yml`/`.env.example` publish Postgres on host port
+**5442**, not 5432. This machine had an unrelated project already bound to 5432,
+which caused silent password-auth failures against the *wrong* Postgres instance
+until traced with `netstat`. 5442 avoids the whole class of "which Postgres did I
+actually connect to" bugs on a dev machine that already runs other containers; if
+5432 is free on the evaluator's machine they can still override `POSTGRES_PORT` in
+their own `.env`.
