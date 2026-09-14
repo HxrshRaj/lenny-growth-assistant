@@ -1,7 +1,7 @@
 """Pydantic request/response models -- real validation, not just type hints."""
 import uuid
 from datetime import datetime
-from typing import Any, Literal
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -28,11 +28,15 @@ class MessageCreate(BaseModel):
 
 
 class Citation(BaseModel):
+    """Shape written by app/services/context.py::build_citations -- kept in sync
+    with it deliberately (score included, since the UI surfaces it)."""
+
     episode_slug: str
     guest: str
     title: str
     source_url: str
     start_timestamp: str
+    score: float
     text_preview: str
 
 
@@ -46,7 +50,7 @@ class MessageOut(BaseModel):
     model_provider: str | None
     model_name: str | None
     retrieval_hit_count: int | None
-    citations: list[dict[str, Any]] | None
+    citations: list[Citation] | None
     latency_ms: int | None
     error: str | None
     created_at: datetime
