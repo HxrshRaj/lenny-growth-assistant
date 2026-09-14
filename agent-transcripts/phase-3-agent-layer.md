@@ -77,8 +77,59 @@ resilience test, not a failure of the build: the graceful-degradation path is
 exactly what Phase 6 asks to verify, and it happened here for real rather than
 needing to be manufactured artificially.
 
-Full success-case verification (a real grounded answer with a real completion, plus
-the "corpus doesn't cover this" negative case) is captured in
-`agent-transcripts/phase-3-verification-followup.md` once the full corpus was
-ingested and the local model wasn't competing with a concurrent embedding job for
-CPU (see that file for the actual answer text and timing).
+## Dead end: three real, compounding local-model problems found via `docker compose up`
+
+Once the full stack was verified through the actual `docker compose up` path (not
+just the host-venv dev setup), live-testing a grounded question surfaced three
+separate, real issues in sequence -- each investigated and fixed rather than
+worked around:
+
+1. **HTTP 200 with an empty completion, no error at all.** First real
+   full-stack test returned a 201 with `"content": ""` and `"error": null`.
+   Traced to Ollama defaulting `num_ctx` to 2048 regardless of what the model
+   actually supports (`mymodel` is trained for 4096) -- a 5-chunk RAG prompt
+   (~2,000+ tokens of context) silently consumed the whole window, leaving no
+   room to generate. **Fixed**: `llm.py` now explicitly passes
+   `options.num_ctx` in every Ollama request (`OLLAMA_NUM_CTX` env var,
+   default 4096, documented as "must match your model's real context or you get
+   silent empty completions").
+2. **With `num_ctx` fixed, the same prompt timed out at 240s instead.** More
+   context now meant more compute per generation step on constrained CPU
+   hardware -- a real, measured hardware limit, not a bug. **Fixed**:
+   `RETRIEVAL_TOP_K` default reduced from 5 to 3 (still genuinely multi-source
+   grounding, meaningfully smaller prompt), and `complete()` now takes a
+   per-skill `max_tokens` budget (QA: 600, artifacts: 1500, Ship 30 essay: 2200)
+   instead of an unbounded generation that could run indefinitely on the local
+   provider.
+3. **`docker compose restart` does not re-read `.env`.** After changing
+   `RETRIEVAL_TOP_K`, a `restart` reused the environment baked in at the
+   container's original `up`, so the fix silently didn't apply -- confirmed by
+   the next test's log still showing `"candidates": 5`. **Fixed the process, not
+   just the config**: `docker compose up -d --force-recreate api` actually
+   re-reads `.env`; documented in the README troubleshooting section so a client
+   engineer doesn't hit the same silent-no-op.
+4. **With all of the above fixed, the request finally returned `error: null`
+   with a real completion -- but the completion itself was incoherent token
+   garbage** (`":product:<span: <|:product: <: <..."`), despite retrieval
+   being demonstrably correct (0.799/0.707/0.707 relevance scores, real Marty
+   Cagan / Peter Deng chunks). Root cause: `mymodel` (the only Ollama model
+   present on this dev machine, a 4-month-old 3.8B custom/Unsloth fine-tune) is
+   not a reliable general-purpose instruction-following chat model -- it does
+   not handle a system+context+question prompt coherently, independent of the
+   context-window/timeout issues above. **Fixed by pulling a known-good small
+   instruct model** (`llama3.2:3b`, Meta's actively-maintained small model,
+   well-documented to follow instructions and handle RAG-style prompts) and
+   switching `OLLAMA_MODEL` to it -- see the follow-up verification below for
+   the real, coherent output this produced.
+
+This is reported in full, including the three-plus rounds of "looked fixed, then
+wasn't," because that is what actually happened running this system against real
+constrained local hardware -- not a curated success story. Each issue had a
+specific, identifiable root cause and a real fix, not a retry-until-it-works
+workaround.
+
+Full success-case verification (a real grounded answer with a real completion,
+plus the "corpus doesn't cover this" negative case) is captured further down this
+file / in `agent-transcripts/phase-3-verification-followup.md` once
+`llama3.2:3b` was pulled -- see that section for the actual answer text and
+timing.
