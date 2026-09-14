@@ -1,0 +1,101 @@
+Loading embedding model 'all-MiniLM-L6-v2'...
+Index currently holds 17079 chunks.
+
+====================================================================================================
+
+Q: How do I know when it's the right time to leave my job?
+----------------------------------------------------------------------------------------------------
+  [1] score=0.432  guest=Uri Levine 2.0  title='A founder’s guide to crisis management | Uri Levine (Waze co'
+      source: https://www.youtube.com/watch?v=lQdogVBHMdA&t=4323s  (@ 01:12:03)
+      text: Uri Levine: I agree. Today is the first day of the rest of your life. And this is pretty much everything in your life. So ask yourself, knowing what I know today, would I do something different? Now, if the answer is yes, then do something different today. Don't wait until ...
+  [2] score=0.420  guest=Graham Weaver  title='How to break out of autopilot and create the life you want |'
+      source: https://www.youtube.com/watch?v=UpGR9P0Ufts&t=3626s  (@ 01:00:26)
+      text: Lenny Rachitsky: Something I wanted to ask, I can't help but ask at this point, because I think a lot of people are wondering this, just when do you quit? When should you quit something? Because some things are just not worth it. Is there any advice there you could share? ...
+  [3] score=0.411  guest=Graham Weaver  title='How to break out of autopilot and create the life you want |'
+      source: https://www.youtube.com/watch?v=UpGR9P0Ufts&t=3615s  (@ 01:00:15)
+      text: Lenny Rachitsky: I love that the circles back to your core advice of stick with it. Most things that are important take a long time and there's a lot of suffering [inaudible 01:00:24]. Graham Weaver: Yeah, they do. Yeah. Lenny Rachitsky: Something I wanted to ask, I can't ...
+  [4] score=0.394  guest=Bob Moesta  title='How to find work you love | Bob Moesta (Jobs-to-be-Done co-c'
+      source: https://www.youtube.com/watch?v=2wypVv9wZtI&t=1482s  (@ 00:24:42)
+      text: Lenny: Yeah, this is a great opportunity to pass it on and so I'm very happy we're doing that. I had no idea about any of this about you, so thank you for sharing that. Bob Moesta: It's been fun. I pinched myself. The other part is I don't know how I got here. One of the ...
+  [5] score=0.384  guest=Paul Millerd  title='Redefining success, money, and belonging | Paul Millerd (The'
+      source: https://www.youtube.com/watch?v=yFckwBtiCUM&t=392s  (@ 00:06:32)
+      text: Lenny: I imagine many people listening to this are feeling like, "No way I'm on the default path. I'm doing so many interesting things. I'm doing what I want," but they probably still are on this default path. What are some signs that might tell you that you actually still ...
+====================================================================================================
+
+Q: What makes a good product manager?
+----------------------------------------------------------------------------------------------------
+  [1] score=0.778  guest=Peter Deng  title='Peter Deng'
+      source:   (@ 00:01:20)
+      text: Lenny Rachitsky: What's something you've learned about what it takes to be a great product person? Peter Deng: I think there are five different types of product managers. Number one is-
+  [2] score=0.720  guest=Alex Komoroske  title='Thinking like a gardener, slime mold, the adjacent possible:'
+      source: https://www.youtube.com/watch?v=PoWRYBWSqpU&t=864s  (@ 00:14:24)
+      text: Lenny Rachitsky: You're a product manager for most of your career. Now, you're a founder. I'm curious what your advice would be to product managers and people building products in terms of what skills they should lean into, what you think is going to be matter most. There's ...
+  [3] score=0.712  guest=Melissa Perri  title='Everything you’ve ever wanted to know about SAFe and the pro'
+      source: https://www.youtube.com/watch?v=wbi9chsAHp4&t=4391s  (@ 01:13:11)
+      text: Lenny Rachitsky: But importantly, there's a bar for who is called a product manager because if you take a product owner as you've said, and say you're a product manager, they're going to be a terrible product manager. Your advice is make them an associate PM, and then once ...
+  [4] score=0.702  guest=Marty Cagan 2.0  title='The disease of process people | Marty Cagan'
+      source: https://www.youtube.com/watch?v=gXDg88rSG8U&t=46s  (@ 00:00:46)
+      text: Lenny: Today my guest is Marty Cagan. Marty has been helping product teams and product managers improve their craft, processes and careers for over 20 years. He's worked with more product teams and more product managers than any human alive. He's also written two of the most ...
+  [5] score=0.702  guest=Marty Cagan  title='Product management theater | Marty Cagan (Silicon Valley Pro'
+      source: https://www.youtube.com/watch?v=9N4ZgNaWvI0&t=46s  (@ 00:00:46)
+      text: Lenny: Today my guest is Marty Cagan. Marty has been helping product teams and product managers improve their craft, processes and careers for over 20 years. He's worked with more product teams and more product managers than any human alive. He's also written two of the most ...
+====================================================================================================
+
+Q: How should I think about pricing my product?
+----------------------------------------------------------------------------------------------------
+  [1] score=0.736  guest=Jessica Hische  title='How to see like a designer: The hidden power of typography a'
+      source: https://www.youtube.com/watch?v=tLLqE6Ia8-U&t=3005s  (@ 00:50:05)
+      text: Lenny Rachitsky: Along these lines, you have a pretty unique way of pricing your work. For people that may want to explore this with you, share whatever you can about just how you think about pricing and ideally even an order magnitude of pricing so they're like, "Oh, okay. ...
+  [2] score=0.640  guest=Krithika Shankarraman  title='Growth tactics from OpenAI and Stripe’s first marketer | Kri'
+      source: https://www.youtube.com/watch?v=QaDsk4iH1aw&t=3604s  (@ 01:00:04)
+      text: Lenny Rachitsky: That reminds me. To sort of close out our conversation, I wanted to come back to pricing strategy. I have that in my notes here and I haven't gone back to it. So let's focus on the AI and pricing strategy. Just say someone is trying to figure out pricing for ...
+  [3] score=0.627  guest=Paul Adams  title='What AI means for your product strategy | Paul Adams (CPO of'
+      source: https://www.youtube.com/watch?v=R-Geamq9xc0&t=3198s  (@ 00:53:18)
+      text: Lenny: Wow, this feels like it could be a solo episode, just talking through your pricing lessons and journey. Maybe just is there a nugget of wisdom you could share for someone that's trying to think about pricing right now based on your experience? Paul Adams: Number one ...
+  [4] score=0.626  guest=Naomi Ionita  title='How to price your product | Naomi Ionita (Menlo Ventures)'
+      source: https://www.youtube.com/watch?v=xvQadImf568&t=0s  (@ 00:00)
+      text: Naomi Ionita: Do not set it and forget it. I see companies do this, where they labor over designs and features. And they build this perfect product that's delightful to use. And then pricing's sort of plucked out of thin air, and then they don't revisit it. This was Evernote. ...
+  [5] score=0.623  guest=Naomi Ionita  title='How to price your product | Naomi Ionita (Menlo Ventures)'
+      source: https://www.youtube.com/watch?v=xvQadImf568&t=1185s  (@ 19:45)
+      text: Naomi Ionita: Yeah, there's a full pricing process here, so I'm happy to walk through it. The idea here is understanding who your customers are, why they pay you, what is it that they want or value, and how much are they willing to pay you. I'd encourage you to put together a ...
+====================================================================================================
+
+Q: What is the best way to run user research interviews?
+----------------------------------------------------------------------------------------------------
+  [1] score=0.619  guest=Melissa Perri + Denise Tilles  title='The ultimate guide to product operations | Melissa Perri and'
+      source: https://www.youtube.com/watch?v=9VdixM9KPN4&t=930s  (@ 00:15:30)
+      text: Melissa Perri: So we've seen a lot of the work that is done in that team. They work with user research. Now, in organizations where let's say, this happens in a lot of organizations but not all of them, where product oversees design as well and user research and it oversees ...
+  [2] score=0.593  guest=Judd Antin  title='The UX Research reckoning is here | Judd Antin (Airbnb, Meta'
+      source: https://www.youtube.com/watch?v=L6RKi9ZvkT4&t=1205s  (@ 00:20:05)
+      text: Judd Antin: I've interviewed hundreds or thousands of researchers, and the way I usually approach that is you want a researcher who's got a Swiss army knife, because if all you have is a hammer, then everything looks like a nail. And so if you give in the context of an ...
+  [3] score=0.578  guest=Melissa Perri + Denise Tilles  title='The ultimate guide to product operations | Melissa Perri and'
+      source: https://www.youtube.com/watch?v=9VdixM9KPN4&t=3270s  (@ 00:54:30)
+      text: Melissa Perri: I think for customer and market research part, you're looking for somebody with more of a user research background here, but process-oriented. So I'd look for somebody who knows user research code, knows really good tactics for that because it can help create ...
+  [4] score=0.566  guest=Karri Saarinen  title='Inside Linear: Building with taste, craft, and focus | Karri'
+      source: https://www.youtube.com/watch?v=4muxFVZ4XfM&t=3730s  (@ 01:02:10)
+      text: Lenny: Awesome. So one thing you didn't mention is you have a really unique way of interviewing, which is a paid work trial. Can you just talk about what that is? And also just while you're in that area, you talked about testing for product sensibility, so whatever you can ...
+  [5] score=0.558  guest=Teresa Torres  title='Build better products with continuous product discovery | Te'
+      source: https://www.youtube.com/watch?v=9RFaz9ZBXpk&t=2614s  (@ 43:34)
+      text: Teresa Torres: Our language around this is terrible. It's so ambiguous. What's an experiment? What's user research? I would say experiments are user research. I'm trying to just dramatically simplify this. I think from a discovery standpoint, we have two core activities: ...
+====================================================================================================
+
+Q: How do you build a strong company culture as a startup scales?
+----------------------------------------------------------------------------------------------------
+  [1] score=0.687  guest=Eric Ries  title='Reflections on a movement | Eric Ries (creator of the Lean S'
+      source: https://www.youtube.com/watch?v=xzebbzIntFc&t=383s  (@ 00:06:23)
+      text: Lenny: Amazing, so I'm going to want to talk about all those things as we get into this. Something I wanted to mention is I feel like people don't give you enough credit for how many core concepts of startups and product building you've either invented or popularized. So what ...
+  [2] score=0.630  guest=Itamar Gilad  title='Becoming evidence-guided | Itamar Gilad (Gmail, YouTube, Mic'
+      source: https://www.youtube.com/watch?v=aJWSn-tz3jQ&t=2763s  (@ 00:46:03)
+      text: Lenny: Awesome. So maybe just to close off that loop, say someone listening is at a bigger company, say Netflix versus a series A, series B or startup. Is there something you'd recommend about them approaching this differently? Any kind of guidance there of just how to take ...
+  [3] score=0.627  guest=Cam Adams  title='Inside Canva: Coaches not managers, giving away your Legos, '
+      source: https://www.youtube.com/watch?v=wgrJNHlYUA8&t=1020s  (@ 00:17:00)
+      text: Cameron Adams: Yeah, Molly wrote a great article, which I actually refer everyone who joins Canva to in the cultural onboarding session, which I give them. So I run everyone through the culture at Canva and what they can expect over the next few years as they work here, and ...
+  [4] score=0.600  guest=Grant Lee  title='“Dumbest idea I’ve heard” to $100M ARR: Inside the rise of G'
+      source: https://www.youtube.com/watch?v=3H0ngGU5pbM&t=2455s  (@ 00:40:55)
+      text: Lenny Rachitsky: I love how many things you did that feel like this will not work out. Building a startup within the presentation space, doing a whole rebrand in the middle of scaling, also just reworking the entire product after you launched and just rethinking the whole ...
+  [5] score=0.592  guest=Dharmesh Shah  title='Zigging vs. zagging: How HubSpot built a $30B company | Dhar'
+      source: https://www.youtube.com/watch?v=dpw9Ue1HU48&t=0s  (@ 00:00:00)
+      text: Dharmesh Shah: Some of the best startup advice I've heard is startups should focus on one thing and be really, really exceptionally world-class at that one thing. And one of our early zigs is we are going to do exactly the opposite of that. Lenny: You have no direct reports ...
+====================================================================================================
+
+[exited with code 0]

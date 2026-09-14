@@ -26,7 +26,12 @@ class Settings(BaseSettings):
 
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "mymodel"
-    ollama_timeout_seconds: float = 120.0
+    ollama_timeout_seconds: float = 240.0
+    # Ollama silently defaults num_ctx to 2048 even when the underlying model
+    # supports more -- see llm.py::_complete_ollama for the real failure this
+    # caused (HTTP 200, empty completion, no error at all). 4096 matches this
+    # build's default local model; raise it if you swap in a larger-context model.
+    ollama_num_ctx: int = 4096
 
     # --- Retrieval ---
     embedding_model: str = "all-MiniLM-L6-v2"

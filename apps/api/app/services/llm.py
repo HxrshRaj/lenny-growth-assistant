@@ -74,6 +74,12 @@ def _complete_ollama(system: str, messages: list[dict], settings: Settings) -> L
         "model": settings.ollama_model,
         "messages": [{"role": "system", "content": system}, *messages],
         "stream": False,
+        # Ollama defaults num_ctx to 2048 regardless of what the model actually
+        # supports, silently truncating/starving longer prompts (discovered live:
+        # a 5-chunk RAG prompt returned HTTP 200 with an empty completion -- no
+        # error, just nothing, because the truncated context left no room to
+        # generate). Explicitly request the model's real context window instead.
+        "options": {"num_ctx": settings.ollama_num_ctx},
     }
     try:
         resp = httpx.post(
