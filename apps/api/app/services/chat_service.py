@@ -1,48 +1,47 @@
 """
-Turns a user message into a persisted assistant reply.
+Turns a user message into a persisted, grounded assistant reply.
 
-Phase 1 status: NO retrieval and NO LLM call exist yet -- this intentionally does
-NOT fabricate a grounded answer. It persists the user message and a clearly-labeled
-placeholder assistant turn so the session/message persistence path (the actual
-Phase 1 deliverable) can be verified end to end. This function is replaced in
-Phase 3 with the real retrieval -> agent -> grounded-answer pipeline; nothing about
-the router or schema changes when that happens.
+Phase 3 status: this now runs the real pipeline (router -> retrieval -> skill ->
+LLM provider) via app/services/agent.py. The Phase 1 placeholder this replaced
+just echoed the user's message; see agent-transcripts/phase-1-backend-core.md.
 """
-import time
 import uuid
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session as DBSession
 
 from app.logging_config import get_logger
 from app.models import Message
+from app.services import agent
 
 logger = get_logger(__name__)
 
-PHASE1_PLACEHOLDER_NOTICE = (
-    "Retrieval and the model agent are not wired up yet (that lands in Phase 2/3). "
-    "This is a placeholder response confirming the message was received and persisted."
-)
+
+def _history_for_llm(db: DBSession, session_id: uuid.UUID) -> list[dict]:
+    stmt = select(Message).where(Message.session_id == session_id).order_by(Message.created_at)
+    rows = db.scalars(stmt).all()
+    return [{"role": m.role, "content": m.content} for m in rows if m.role in ("user", "assistant")]
 
 
 def generate_response(db: DBSession, session_id: uuid.UUID, user_content: str) -> Message:
-    start = time.monotonic()
+    history = _history_for_llm(db, session_id)  # BEFORE inserting the new user message
 
     user_message = Message(session_id=session_id, role="user", content=user_content)
     db.add(user_message)
     db.flush()
 
-    assistant_content = f"{PHASE1_PLACEHOLDER_NOTICE}\n\nYou said: {user_content!r}"
-    latency_ms = int((time.monotonic() - start) * 1000)
+    result = agent.run_turn(db, user_content, history)
 
     assistant_message = Message(
         session_id=session_id,
         role="assistant",
-        content=assistant_content,
-        model_provider=None,
-        model_name=None,
-        retrieval_hit_count=None,
-        citations=None,
-        latency_ms=latency_ms,
+        content=result.content,
+        model_provider=result.model_provider,
+        model_name=result.model_name,
+        retrieval_hit_count=result.retrieval_hit_count,
+        citations=result.citations,
+        latency_ms=result.latency_ms,
+        error=result.error,
     )
     db.add(assistant_message)
     db.commit()
@@ -51,7 +50,10 @@ def generate_response(db: DBSession, session_id: uuid.UUID, user_content: str) -
     logger.info(
         "message_handled",
         session_id=str(session_id),
-        phase="1-placeholder",
-        latency_ms=latency_ms,
+        intent=result.intent,
+        retrieval_hit_count=result.retrieval_hit_count,
+        model_provider=result.model_provider,
+        latency_ms=result.latency_ms,
+        had_error=result.error is not None,
     )
     return assistant_message

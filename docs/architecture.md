@@ -185,7 +185,130 @@ see `apps/api/app/errors.py`. No endpoint ever returns a raw stack trace; unexpe
 exceptions are logged server-side (structured JSON via structlog) and returned to
 the client as a generic 500 with `code: "INTERNAL_ERROR"`.
 
-## 8. Deployment note: Postgres port
+## 8a. `chunks` table (Phase 2)
+
+Added by `apps/api/alembic/versions/a4f4b631a549_*`, owned by
+`apps/api/app/models_retrieval.py`. Full column list mirrors the metadata table in
+sec 3 above, plus `id` (uuid PK), `text` (the embedded chunk text), `embedding`
+(`vector(384)`), `created_at`. Constraints: `UNIQUE(episode_slug, chunk_index)` so
+re-running ingestion after a `git pull` upserts instead of duplicating; an HNSW
+index (`vector_cosine_ops`) on `embedding` for fast approximate cosine search; a
+btree index on `episode_slug`.
+
+**Component boundary, intentional**: `ingestion/` is a separate Docker build
+context with no import access to `apps/api/app` -- it writes to `chunks` with plain
+parameterized SQL (`ingestion/ingest.py`) against the exact columns Alembic
+creates, rather than sharing ORM model code across two independently-deployable
+services. Alembic (in `apps/api`) is the single schema source of truth; ingestion
+is a data loader, not a schema owner.
+
+## 8b. Retrieval flow
+
+`apps/api/app/services/retrieval.py::retrieve(db, query)`:
+1. Embed the query with the same `all-MiniLM-L6-v2` model used at ingestion time
+   (`app/services/embeddings.py`, lazy-loaded singleton).
+2. `ORDER BY embedding <=> :query_vec LIMIT top_k` using pgvector's cosine-distance
+   operator (via the HNSW index) -- `SELECT ..., 1 - (embedding <=> :q) AS score`.
+3. Drop any hit below `RETRIEVAL_MIN_SCORE` (default 0.15) -- this is what lets the
+   agent say "the transcripts don't cover this" instead of returning a technically-
+   top-5-but-irrelevant chunk as if it were a real answer.
+4. Every hit carries its full source metadata straight through to the API response
+   (`Citation` schema) -- no separate "look up the source" step.
+
+## 8c. Agent routing (Phase 3)
+
+`apps/api/app/services/agent.py::run_turn()` is the single orchestrator:
+`router.classify_intent()` -> `retrieval.retrieve()` -> skill-specific
+system-prompt + message construction -> `llm.complete()`.
+
+**Router is deterministic (regex/keyword), not LLM-driven tool-calling** --
+documented trade-off, not an oversight. Reasoning:
+- The assignment requires the **local Ollama path to work for the demo**. Small
+  local models (this build ships against a 3.8B model) are unreliable at
+  structured tool-calling; making routing depend on it would make the mandatory
+  local demo path the least reliable part of the system.
+- A deterministic router gives **identical routing behavior on both providers** --
+  a evaluator switching `MODEL_PROVIDER` sees the same skill selected for the same
+  input, which is easier to reason about and test than "usually picks the right
+  tool."
+- Each skill (`app/services/skills/{qa,ship30,artifact}.py`) is still a real,
+  separate, structured component with its own system prompt and message-building
+  logic -- satisfying "encode the skill explicitly" without needing the routing
+  *decision itself* to be model-driven.
+- Documented limitation: a message that doesn't match any keyword pattern always
+  falls through to the QA skill, even if the user's intent was actually "write me
+  an essay" phrased unusually. Acceptable for this build; a production version
+  would add LLM-driven routing behind a provider capability flag (only enabled for
+  providers/models known to support reliable tool-calling).
+
+Skills:
+- **`qa`** (default): grounded Q&A, includes recent conversation history for
+  follow-ups, instructed to explicitly decline when context is insufficient.
+- **`ship30_essay`**: Ship 30 for 30 structural principles (sec 4.2 in PRD),
+  extracted from the real guide, encoded as an explicit system-prompt template in
+  `skills/ship30.py` -- not an inline one-off prompt.
+- **`artifact_markdown` / `artifact_html`**: instructs the model to emit the
+  artifact inside a ```markdown or ```html fence; the frontend detects that fence
+  (`extractArtifact.js`) and renders it in the Artifact Viewer instead of as chat
+  prose.
+
+## 8d. Model-provider toggle
+
+One env var, `MODEL_PROVIDER` (`anthropic` | `ollama`), read once into
+`app.config.Settings`. `app/services/llm.py::complete()` is the only place that
+branches on it -- no other module imports `anthropic` or makes an Ollama HTTP call
+directly. Switching providers is `.env` edit + restart, zero code changes.
+`GET /config` surfaces the active provider and whether it's actually reachable
+right now (not just "configured").
+
+**Fallback behavior**: every provider failure (missing `ANTHROPIC_API_KEY`, Ollama
+unreachable, Ollama timeout, non-200 from either API) is caught in `llm.py` and
+raised as `LLMProviderError(provider, detail)`. `agent.py` catches that and returns
+a normal `AgentTurnResult` with `error` set and a clearly-labeled ⚠️ message as the
+`content` -- the turn is still persisted (the user doesn't lose their message) and
+the API still returns `201`, not a 5xx, because the *request* succeeded (a message
+was created); it's the *model call* that failed. This is a considered choice over
+returning a 503: a 503 would leave nothing in the session for the user to see when
+they reload, whereas a persisted error-bubble message behaves like a real chat
+product's inline failure state. (Contrast with DB-down, sec 7: that fails before
+any row exists, so it *does* have to be a 503 -- there's nothing to persist.)
+
+## 8e. Artifact security
+
+The frontend (`apps/web/src/components/ArtifactViewer.jsx`) renders HTML artifacts
+in `<iframe sandbox="allow-same-origin">` -- deliberately **without**
+`allow-scripts`.
+
+**What this permits**: normal DOM rendering, inline `<style>` and CSS, images,
+layout, fonts -- everything a static HTML/CSS snippet needs to look right.
+
+**What this blocks**: `allow-scripts` is the *only* sandbox token that permits
+script execution. Without it, `<script>` tags, inline event handlers
+(`onclick="..."`), and `javascript:` URIs are all inert -- the browser simply does
+not execute them, full stop. No form submission (`allow-forms` not granted), no
+popups (`allow-popups` not granted), no top-level navigation escape.
+
+**Why `allow-same-origin` alone is safe here**: the well-known sandbox footgun is
+combining `allow-scripts` **and** `allow-same-origin` together -- that combination
+lets a malicious script use same-origin privileges to reach out of the sandbox
+entirely. Since this build never grants `allow-scripts`, there is no script
+execution to escape with in the first place; `allow-same-origin` alone just lets
+the iframe's content render with normal-origin semantics (so relative
+URLs/fonts/etc. behave as expected) with no script capability to exploit it.
+
+**Defense in depth**: `apps/web/src/utils/sanitizeHtml.js` strips `<script>`
+blocks, `on*` attributes, and `javascript:` hrefs/srcs from the artifact body
+*before* it's handed to the iframe, as an independent second layer -- so the
+artifact never even contains an obvious injection attempt, in case a future change
+ever loosens the sandbox. Verified in Phase 5 testing: a generated artifact
+containing `<script>alert(1)</script>` renders with the script stripped/inert, no
+alert fires (see `agent-transcripts/phase-5-frontend.md`).
+
+Markdown artifacts render via `react-markdown` with the default (safe) config --
+raw HTML passthrough is never enabled, so a Markdown artifact can't smuggle in an
+HTML/script payload either.
+
+## 9. Deployment note: Postgres port
 
 The default `docker-compose.yml`/`.env.example` publish Postgres on host port
 **5442**, not 5432. This machine had an unrelated project already bound to 5432,
