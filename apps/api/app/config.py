@@ -26,7 +26,7 @@ class Settings(BaseSettings):
 
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "mymodel"
-    ollama_timeout_seconds: float = 60.0
+    ollama_timeout_seconds: float = 120.0
 
     # --- Retrieval ---
     embedding_model: str = "all-MiniLM-L6-v2"
