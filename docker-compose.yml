@@ -1,0 +1,75 @@
+name: lenny-growth-assistant
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-lenny}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lenny}
+      POSTGRES_DB: ${POSTGRES_DB:-lenny}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lenny} -d ${POSTGRES_DB:-lenny}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./apps/api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-lenny}:${POSTGRES_PASSWORD:-lenny}@db:5432/${POSTGRES_DB:-lenny}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./apps/api:/app
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: >
+      sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+
+  web:
+    build:
+      context: ./apps/web
+    restart: unless-stopped
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+    depends_on:
+      - api
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+    command: npm run dev -- --host 0.0.0.0 --port 5173
+
+  # One-off ingestion job. Not started by `docker compose up` (profile-gated).
+  # Run with: docker compose --profile ingestion run --rm ingestion
+  ingestion:
+    build:
+      context: ./ingestion
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-lenny}:${POSTGRES_PASSWORD:-lenny}@db:5432/${POSTGRES_DB:-lenny}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./ingestion:/app
+      - ingestion_data:/app/data
+    profiles: ["ingestion"]
+
+volumes:
+  pg_data:
+  ingestion_data:

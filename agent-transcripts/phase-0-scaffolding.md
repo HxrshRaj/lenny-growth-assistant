@@ -82,3 +82,25 @@ run time rather than trust any document's stated count.
 2. Need a real `ANTHROPIC_API_KEY` (user's own) to verify the cloud provider path.
    Will ask them to drop it into `apps/api/.env` directly rather than pasting into
    chat.
+
+## Update: original assignment brief located
+
+The user provided the source document the task prompt was derived from:
+`Forward_Deployed_Engineer_Take_Home_Assignment (1) (1).docx`. Extracted its text
+(no pandoc/python-docx available, so unzipped the .docx and stripped
+`word/document.xml` tags directly) and saved a copy at
+`docs/original-assignment-brief.txt` for reference against every deliverable.
+
+Critical facts from the source doc that change execution priorities:
+- **Due date: 15/09/26 EOD** -- i.e. tomorrow, not an open-ended timeline. Shifted
+  from "be thorough at every phase" to "hit every required deliverable, verify for
+  real, but move fast and don't gold-plate."
+- Two deliverables cannot be produced by the agent at all and are called out to the
+  user explicitly: (1) the 2-3 minute demo video with camera enabled, uploaded to
+  YouTube: (2) submitting the Google Form
+  (https://forms.gle/LgotDHNVxW1mbzNE7). Both require the user.
+- Source doc confirms the task prompt's phase breakdown is a faithful expansion of
+  the brief -- no material conflicts found. One nuance: the brief allows "Anthropic
+  Claude Agent SDK **or** Pi Coding Agent" and "Anthropic Claude **or** OpenAI" for
+  the cloud provider -- already defaul931ing to Claude Agent SDK + Anthropic per the
+  task prompt's stated preference.
