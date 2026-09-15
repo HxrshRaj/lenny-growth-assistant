@@ -96,6 +96,15 @@ def run_turn(db: DBSession, user_message: str, history: list[dict]) -> AgentTurn
             messages = qa.build_messages(context_block, recent_history, user_message)
             max_tokens = 600
 
+        # These budgets are tuned for the local provider's CPU latency. Cloud
+        # providers (Anthropic, Gemini) have no such constraint, and some cloud
+        # models spend part of the token budget on internal reasoning before the
+        # visible answer -- observed live: a real Gemini 3.6 response truncated
+        # mid-sentence at 600 tokens with no error, because reasoning tokens ate
+        # most of the budget. Give cloud providers real headroom.
+        if settings.model_provider != "ollama":
+            max_tokens = max(max_tokens * 4, 2000)
+
         result = complete(system, messages, settings, max_tokens=max_tokens)
 
         # Guarantee the fence tag the frontend depends on -- don't just trust the

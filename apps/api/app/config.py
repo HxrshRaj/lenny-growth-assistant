@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     anthropic_model: str = "claude-sonnet-5"
 
     gemini_api_key: str | None = None
-    gemini_model: str = "gemini-2.0-flash"
+    gemini_model: str = "gemini-3.6-flash"
 
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2:3b"
