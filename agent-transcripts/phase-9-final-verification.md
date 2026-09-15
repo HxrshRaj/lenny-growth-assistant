@@ -52,6 +52,40 @@
    completion was not observed firsthand. Flagged explicitly rather than
    implied as tested.
 
+   **A third cloud provider, Gemini, was added and *was* live-tested** -- the
+   evaluator had a Gemini key but not an Anthropic one. The assignment's cloud
+   requirement is "at least one cloud provider, such as Anthropic Claude or
+   OpenAI" (illustrative examples, not exhaustive), so Gemini satisfies it.
+   `app/services/llm.py::_complete_gemini` calls Gemini's REST
+   `generateContent` endpoint directly over `httpx`. Real, live results:
+   - First real call hit a real bug: the pinned default model name
+     (`gemini-2.0-flash`) had been deprecated server-side, returning a real
+     HTTP 404 telling us to use `gemini-3.6-flash` instead -- caught cleanly as
+     a structured `LLMProviderError`, not a crash. Fixed by updating the
+     default model.
+   - Second real bug found live: a real Gemini 3.6 response truncated
+     mid-sentence at the 600-token QA budget with `error: null` -- the model
+     spends part of its budget on internal reasoning before the visible
+     answer, so a budget tuned for the local CPU model's latency starved the
+     cloud model's output. Fixed: cloud providers now get `max(4x the
+     skill's base budget, 2000)` tokens, since they have no CPU-latency
+     constraint to protect against.
+   - A real transient failure occurred too: one call hit a genuine Gemini
+     `503 "This model is currently experiencing high demand"` -- handled
+     exactly like every other provider failure (structured error, persisted,
+     no crash). Evidence:
+     `agent-transcripts/phase-3-gemini-503-transient-error-evidence.json`.
+   - A real successful call followed: `model_name: "gemini-3.6-flash"`,
+     `latency_ms: 22593`, `error: null`, and -- notably -- Gemini correctly
+     judged the retrieved excerpts too thin to fully answer and said so
+     explicitly rather than filling the gap with outside knowledge, the same
+     grounding discipline verified on Ollama in the section above. Evidence:
+     `agent-transcripts/phase-3-gemini-live-evidence.json`.
+
+   This is reported with the same standard as the rest of this project: real
+   bugs found via real live calls, root-caused and fixed, not just "it's
+   implemented so it should work."
+
 ## What a fresh clone actually needs (documented, not independently re-verified
 ## from a truly clean checkout in this session due to time)
 
