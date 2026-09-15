@@ -80,6 +80,40 @@ having room to. Not re-run with prompt tricks to force more output within this
 build's time budget -- reported as-is, a genuine measured result rather than a
 retried-until-it-looked-good number.
 
+## Re-run via Gemini once the cloud path existed -- real improvement, not a retry-until-better
+
+Once Gemini support was added (Phase 3 follow-up), re-ran the exact same
+request ("Turn what you know about pricing strategy into a Ship 30 for 30
+essay") against `gemini-2.5-flash` for real comparison, not to cherry-pick a
+better number. Full evidence:
+`agent-transcripts/phase-4-ship30-essay-gemini-evidence.json`.
+
+- **1,604 words** -- within reach of the target range (slightly over 1,450,
+  much closer than the local model's 807 under).
+- Real structure: title, five bolded subheadings, bulleted lists, a
+  `**Takeaway:**` section ending in three specific, actionable questions --
+  matches the Ship 30 principles as instructed.
+- **Grounding discipline was exceptional, not just adequate**: the retrieved
+  chunks for this topic (same three guests as before -- Jessica Hische,
+  Patrick Campbell, Madhavan Ramanujam) happen to capture *Lenny's questions
+  to* these experts, not their full answers. Rather than fabricating plausible
+  answers and presenting them as real quotes (a real risk flagged in the local
+  model's run), Gemini explicitly said so in its own second section ("the
+  excerpts do not contain the experts' responses") and clearly hedged every
+  inference with language like "we can infer" / "had this been provided"
+  instead of inventing dialogue. This is a materially better display of the
+  "acknowledge when material doesn't support an answer" requirement than
+  either provider's Q&A skill runs, applied inside a long-form generation
+  task where it would have been easy to just fabricate.
+- Retrieval hit count, citations, and real source guests were identical to the
+  earlier local run -- confirms this is the same real retrieval, better
+  writing on top of it, not different (better) input data making the job
+  easier.
+
+Neither result is deleted or hidden in favor of the other -- both are real,
+both are reported, and the difference between them is itself informative
+evidence for the PRD's "local-model quality" risk entry.
+
 ## Honest note on local-model essay generation time
 
 Given the measured ~5-minute latency for a 600-token QA answer on this CPU (see

@@ -17,6 +17,20 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("app_startup", model_provider=settings.model_provider, environment=settings.environment)
+    # Eager-load the embedding model here rather than lazily on first request.
+    # Found live: SentenceTransformer's first-ever `.to(device)` call is not
+    # safe against concurrent invocation -- two requests arriving at once right
+    # after a cold container start both triggered PyTorch's lazy meta-tensor
+    # materialization simultaneously and one crashed with "Cannot copy out of
+    # meta tensor; no data!". functools.lru_cache serializes the *function*
+    # call, but real-world traffic (this app's own frontend polling /health and
+    # /config every 15s, plus a real chat request) can still arrive in that
+    # same narrow startup window. Loading it once here, before the app accepts
+    # any request, removes the race entirely.
+    from app.services.embeddings import get_embedder
+
+    get_embedder()
+    logger.info("embedding_model_preloaded")
     yield
 
 
