@@ -202,6 +202,13 @@ Manual UI test plan: [docs/manual-test-plan.md](docs/manual-test-plan.md).
   networks may need the build timeout raised, or run `ingestion`/`api` outside
   Docker per "Local development" above.
 
+## Integrations: n8n, ChromaDB, voice (added after the core build)
+
+- **n8n workflow** (`integrations/n8n/lenny-ask-workflow.json`): Webhook -> Code node signs the request (HMAC-SHA256 over `timestamp.body`) -> HTTP Request to `POST /webhooks/ask` -> JSON response; an empty question gets a 400. Import it into n8n and set `LENNY_API_URL`, `LENNY_WEBHOOK_SECRET` and `NODE_FUNCTION_ALLOW_BUILTIN=crypto`. Set the same `WEBHOOK_SECRET` on the API (empty = endpoint disabled). The endpoint rejects bad signatures, tampered bodies and requests outside a 5-minute replay window. Verified by running real n8n 2.44.6 against the real FastAPI app: a question returned the answer (HTTP 200) and a blank one returned 400. The agent was stubbed for that run, so it proves the workflow and signing, not the LLM answer.
+- **ChromaDB backend**: set `VECTOR_BACKEND=chroma`, then run `python -m app.chroma_sync` to copy chunk vectors from Postgres. Chroma stores vectors and ids; full chunk rows (with citation metadata) are loaded from Postgres, so the rest of the code is backend-agnostic. Default stays pgvector. `ChromaStore` is tested against a real in-memory ChromaDB; the Postgres-to-Chroma sync and the `retrieve()` switch were not run end to end here (the embedding model could not be downloaded in the build sandbox).
+- **Voice** (`/ws/voice`): stream audio chunks over a WebSocket, send `end`, receive `transcript` then the grounded `answer`. Transcription uses faster-whisper (`WHISPER_MODEL`, default `base.en`). The protocol, size limit and error paths are tested with a fake transcriber; **the real Whisper model has not been run** (weights not downloadable in the build sandbox). There is no browser microphone UI yet.
+- Not built: Pinecone, OAuth, WhatsApp Business API.
+
 ## Known limitations
 
 See PRD "Risks and trade-offs" and the honest final-summary note at the end of
