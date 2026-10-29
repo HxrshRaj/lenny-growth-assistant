@@ -48,6 +48,18 @@ class Settings(BaseSettings):
     retrieval_top_k: int = 3
     retrieval_min_score: float = 0.15  # cosine similarity floor; below this we treat as "no hit"
 
+    # --- Vector backend: "pgvector" (default, Postgres) or "chroma" (ChromaDB). ---
+    # With "chroma", ids are Postgres chunk ids and rows are hydrated from Postgres,
+    # so run `python -m app.chroma_sync` (from apps/api) after ingestion.
+    vector_backend: Literal["pgvector", "chroma"] = "pgvector"
+    chroma_path: str = "./.chroma"
+
+    # --- Automation webhook (n8n / Make / Zapier). Empty secret = endpoint disabled. ---
+    webhook_secret: str = ""
+
+    # --- Voice (Whisper via faster-whisper) ---
+    whisper_model: str = "base.en"
+
     # --- CORS ---
     cors_origins: str = "http://localhost:5173"
 

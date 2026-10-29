@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.errors import register_exception_handlers
 from app.logging_config import configure_logging, get_logger
-from app.routers import sessions, system
+from app.routers import sessions, system, voice, webhooks
 
 configure_logging()
 logger = get_logger(__name__)
@@ -64,3 +64,5 @@ async def log_requests(request: Request, call_next):
 
 app.include_router(system.router)
 app.include_router(sessions.router)
+app.include_router(webhooks.router)
+app.include_router(voice.router)
